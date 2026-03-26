@@ -1,7 +1,10 @@
 # Flagsmith + ClickHouse A/B Demo
 
-Локальный демо-проект на React + Vite для A/B теста CTA-кнопки:
-красная против зеленой.
+Локальный демо-проект на React + Vite для A/B теста CTA-кнопки.
+Сейчас эксперимент сравнивает два CTA-текста:
+
+- `Получить предложение`
+- `Узнать вашу выгоду`
 
 Теперь весь локальный контур собран в один `docker-compose.yml`:
 
@@ -44,7 +47,7 @@ yarn stack:logs
 
 После старта доступны:
 
-- frontend: `http://localhost:5173`
+- frontend: `http://localhost:8888`
 - analytics-service: `http://localhost:4000/health`
 - flagsmith: `http://localhost:8000`
 - clickhouse HTTP: `http://localhost:8123`
@@ -52,8 +55,8 @@ yarn stack:logs
 ## Конфигурация по умолчанию
 
 - `VITE_FLAGSMITH_ENVIRONMENT_ID=guNeZ39sAbYJxUFWuXNX5e`
-- `VITE_FLAGSMITH_API_URL=http://localhost:8000/api/v1/`
+- `VITE_FLAGSMITH_API_URL=/flagsmith/api/v1/`
 - `VITE_FLAGSMITH_AB_TEST_FLAG_KEY=my_cool_feature`
-- `VITE_ANALYTICS_API_URL=http://localhost:4000`
+- `VITE_ANALYTICS_API_URL=/analytics`
 - `CLICKHOUSE_USER=analytics`
 - `CLICKHOUSE_PASSWORD=analytics`

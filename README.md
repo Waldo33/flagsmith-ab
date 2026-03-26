@@ -63,6 +63,35 @@ yarn stack:down
 yarn stack:logs
 ```
 
+## Первичная настройка Flagsmith
+
+Важно: этот репозиторий не сидит Flagsmith автоматически.
+
+Если вы разворачиваете проект на новой базе с нуля, дефолтный `VITE_FLAGSMITH_ENVIRONMENT_ID` из репозитория не подойдёт: он ссылается на уже существовавшее environment, а не на новый instance.
+
+Для нового развёртывания:
+
+1. Поднимите стек командой `yarn stack:up`.
+2. Откройте Flagsmith UI на `http://localhost:8000`.
+3. Создайте project и environment.
+4. Скопируйте Client-side Environment Key для этого environment.
+5. Создайте feature с именем `my_cool_feature`.
+6. Настройте значение feature так, чтобы frontend получал строковый variant `green` или `red`.
+7. Подставьте новый environment key в `.env.local` или в `docker-compose.yml` вместо старого `VITE_FLAGSMITH_ENVIRONMENT_ID`.
+8. Пересоберите frontend:
+
+```bash
+docker compose up -d --build frontend
+```
+
+Минимальная ожидаемая конфигурация для этого demo:
+
+- feature key: `my_cool_feature`
+- variant values: `green` и `red`
+- тип значения: строка
+
+Если feature не создан или возвращает другое значение, frontend не примет variant и CTA останется в состоянии загрузки или недоступности.
+
 ## Доступные сервисы
 
 После старта через `docker compose` доступны:
@@ -110,6 +139,8 @@ Docker-frontend отдаётся через nginx и проксирует:
 - `/analytics/api/` -> `analytics-service:4000`
 
 Поэтому внутри frontend используются относительные URL, а не прямые `localhost:8000` и `localhost:4000`.
+
+Для нового self-hosted instance почти наверняка потребуется заменить `VITE_FLAGSMITH_ENVIRONMENT_ID` на ключ вашего собственного environment.
 
 ## Troubleshooting
 

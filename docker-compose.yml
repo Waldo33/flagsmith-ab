@@ -1,0 +1,108 @@
+services:
+  postgres:
+    image: postgres:15.5-alpine
+    environment:
+      POSTGRES_DB: flagsmith
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d flagsmith -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - flagsmith_pgdata:/var/lib/postgresql/data
+
+  flagsmith:
+    image: docker.flagsmith.com/flagsmith/flagsmith:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/flagsmith
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_SECRET_KEY: secret
+      ENVIRONMENT: production
+      FLAGSMITH_DOMAIN: localhost:8000
+      PROMETHEUS_ENABLED: "true"
+      TASK_RUN_METHOD: TASK_PROCESSOR
+      USE_POSTGRES_FOR_ANALYTICS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 8000:8000
+
+  flagsmith-task-processor:
+    image: docker.flagsmith.com/flagsmith/flagsmith:latest
+    command: run-task-processor
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/flagsmith
+      DJANGO_ALLOWED_HOSTS: "*"
+      PROMETHEUS_ENABLED: "true"
+      USE_POSTGRES_FOR_ANALYTICS: "true"
+    depends_on:
+      - flagsmith
+    ports:
+      - 8001:8000
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    environment:
+      CLICKHOUSE_DB: ab_tests
+      CLICKHOUSE_PASSWORD: analytics
+      CLICKHOUSE_USER: analytics
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "clickhouse-client --user $$CLICKHOUSE_USER --password $$CLICKHOUSE_PASSWORD --query 'SELECT 1' >/dev/null 2>&1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    ports:
+      - 8123:8123
+      - 9000:9000
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  analytics-service:
+    build:
+      context: .
+    command: yarn analytics:start
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      ANALYTICS_ALLOWED_ORIGIN: "*"
+      ANALYTICS_PORT: 4000
+      ANALYTICS_STARTUP_RETRY_DELAY_MS: 2000
+      ANALYTICS_STARTUP_RETRY_LIMIT: 30
+      CLICKHOUSE_DATABASE: ab_tests
+      CLICKHOUSE_PASSWORD: analytics
+      CLICKHOUSE_TABLE: cta_experiment_events
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: analytics
+    ports:
+      - 4000:4000
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_ANALYTICS_API_URL: /analytics
+        VITE_FLAGSMITH_AB_TEST_FLAG_KEY: my_cool_feature
+        VITE_FLAGSMITH_API_URL: /flagsmith/api/v1/
+        VITE_FLAGSMITH_ENVIRONMENT_ID: guNeZ39sAbYJxUFWuXNX5e
+    depends_on:
+      - analytics-service
+      - flagsmith
+    ports:
+      - 8888:80
+
+volumes:
+  clickhouse_data:
+  flagsmith_pgdata:
+    external: true
+    name: flagsmith_pgdata
